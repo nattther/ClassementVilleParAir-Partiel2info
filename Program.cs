@@ -22,7 +22,7 @@ class Program
         }
     }
 
-   private static async Task PlusGrandVille(string codePays)
+  private static async Task PlusGrandVille(string codePays)
 {
     string utilisateur = "natther";
     string url = $"http://api.geonames.org/searchJSON?formatted=true&country={codePays}&maxRows=15&cities=cities15000&orderby=population&username={utilisateur}";
@@ -37,6 +37,7 @@ class Program
 
     foreach (var ville in villes.geonames)
     {
+        Console.WriteLine($"Récupération de l'AQI pour {ville.name}...");
         int aqi = await GetAirQualityIndex(ville.name, codePays);
         cityAQIs.Add((ville.name, aqi));
     }
@@ -49,6 +50,7 @@ class Program
         Console.WriteLine($"{cityAQI.Item1}: AQI = {cityAQI.Item2}");
     }
 }
+
 
     private static async Task<int> GetAirQualityIndex(string cityName, string countryCode)
     {
