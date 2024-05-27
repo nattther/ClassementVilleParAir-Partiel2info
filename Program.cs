@@ -22,33 +22,33 @@ class Program
         }
     }
 
-    private static async Task PlusGrandVille(string codePays)
+   private static async Task PlusGrandVille(string codePays)
+{
+    string utilisateur = "natther";
+    string url = $"http://api.geonames.org/searchJSON?formatted=true&country={codePays}&maxRows=15&cities=cities15000&orderby=population&username={utilisateur}";
+
+    using HttpClient client = new HttpClient();
+    HttpResponseMessage response = await client.GetAsync(url);
+    string responseBody = await response.Content.ReadAsStringAsync();
+    GeoNamesResponse villes = JsonSerializer.Deserialize<GeoNamesResponse>(responseBody);
+
+    Console.WriteLine($"Les plus grandes villes en {codePays} :");
+    List<(string, int)> cityAQIs = new List<(string, int)>();
+
+    foreach (var ville in villes.geonames)
     {
-        string utilisateur = "natther";
-        string url = $"http://api.geonames.org/searchJSON?formatted=true&country={codePays}&maxRows=15&cities=cities15000&orderby=population&username={utilisateur}";
-
-        using HttpClient client = new HttpClient();
-        HttpResponseMessage response = await client.GetAsync(url);
-        string responseBody = await response.Content.ReadAsStringAsync();
-        GeoNamesResponse villes = JsonSerializer.Deserialize<GeoNamesResponse>(responseBody);
-
-        Console.WriteLine($"Les plus grandes villes en {codePays} :");
-        List<CityAQI> cityAQIs = new List<CityAQI>();
-
-        foreach (var ville in villes.geonames)
-        {
-            int aqi = await GetAirQualityIndex(ville.name, codePays);
-            cityAQIs.Add(new CityAQI { Name = ville.name, AQI = aqi });
-        }
-
-        var sortedCityAQIs = cityAQIs.OrderBy(c => c.AQI).ToList();
-
-        Console.WriteLine("Villes classées par qualité de l'air (AQI) :");
-        foreach (var cityAQI in sortedCityAQIs)
-        {
-            Console.WriteLine($"{cityAQI.Name}: AQI = {cityAQI.AQI}");
-        }
+        int aqi = await GetAirQualityIndex(ville.name, codePays);
+        cityAQIs.Add((ville.name, aqi));
     }
+
+    var sortedCityAQIs = cityAQIs.OrderBy(c => c.Item2).ToList();
+
+    Console.WriteLine("Villes classées par qualité de l'air (AQI) :");
+    foreach (var cityAQI in sortedCityAQIs)
+    {
+        Console.WriteLine($"{cityAQI.Item1}: AQI = {cityAQI.Item2}");
+    }
+}
 
     private static async Task<int> GetAirQualityIndex(string cityName, string countryCode)
     {
