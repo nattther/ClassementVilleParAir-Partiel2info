@@ -9,12 +9,12 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        Console.WriteLine("Veuillez entrer un code de pays, (exemple FR) :");
-        string codePays = Console.ReadLine();
+        Console.WriteLine("Veuillez entrer un code de pays (exemple : FR, US, GB) :");
+        string codePays = Console.ReadLine()?.ToUpper();
 
         if (!string.IsNullOrEmpty(codePays))
         {
-            await PlusGrandVille(codePays.ToUpper());
+            await PlusGrandesVilles(codePays);
         }
         else
         {
@@ -22,35 +22,36 @@ class Program
         }
     }
 
-  private static async Task PlusGrandVille(string codePays)
-{
-    string utilisateur = "natther";
-    string url = $"http://api.geonames.org/searchJSON?formatted=true&country={codePays}&maxRows=15&cities=cities15000&orderby=population&username={utilisateur}";
-
-    using HttpClient client = new HttpClient();
-    HttpResponseMessage response = await client.GetAsync(url);
-    string responseBody = await response.Content.ReadAsStringAsync();
-    GeoNamesResponse villes = JsonSerializer.Deserialize<GeoNamesResponse>(responseBody);
-
-    Console.WriteLine($"Les plus grandes villes en {codePays} :");
-    List<(string, int)> cityAQIs = new List<(string, int)>();
-
-    foreach (var ville in villes.geonames)
+    private static async Task PlusGrandesVilles(string codePays)
     {
-        Console.WriteLine($"Récupération de l'AQI pour {ville.name}...");
-        int aqi = await GetAirQualityIndex(ville.name, codePays);
-        cityAQIs.Add((ville.name, aqi));
+        string utilisateur = "natther";
+        string url = $"http://api.geonames.org/searchJSON?formatted=true&country={codePays}&maxRows=15&cities=cities15000&orderby=population&username={utilisateur}";
+
+        using HttpClient client = new HttpClient();
+        HttpResponseMessage response = await client.GetAsync(url);
+        string responseBody = await response.Content.ReadAsStringAsync();
+        GeoNamesResponse villes = JsonSerializer.Deserialize<GeoNamesResponse>(responseBody);
+
+        Console.WriteLine($"Les plus grandes villes en {codePays} :");
+
+        List<(string, int)> cityAQIs = new List<(string, int)>();
+
+        foreach (var ville in villes.geonames)
+        {
+            Console.WriteLine($"Récupération de l'AQI pour {ville.name}...");
+            int aqi = await GetAirQualityIndex(ville.name, codePays);
+            cityAQIs.Add((ville.name, aqi));
+        }
+
+        var sortedCityAQIs = cityAQIs.OrderBy(c => c.Item2).ToList();
+
+        Console.WriteLine("Classement des villes par qualité de l'air (AQI) :");
+        
+        for (int i = 0; i < sortedCityAQIs.Count; i++)
+        {
+            Console.WriteLine($"Top {i + 1}: {sortedCityAQIs[i].Item1} - AQI = {sortedCityAQIs[i].Item2}");
+        }
     }
-
-    var sortedCityAQIs = cityAQIs.OrderBy(c => c.Item2).ToList();
-
-    Console.WriteLine("Villes classées par qualité de l'air (AQI) :");
-    foreach (var cityAQI in sortedCityAQIs)
-    {
-        Console.WriteLine($"{cityAQI.Item1}: AQI = {cityAQI.Item2}");
-    }
-}
-
 
     private static async Task<int> GetAirQualityIndex(string cityName, string countryCode)
     {
@@ -93,10 +94,4 @@ public class AQIInfo
 {
     public double concentration { get; set; }
     public int aqi { get; set; }
-}
-
-public class CityAQI
-{
-    public string Name { get; set; }
-    public int AQI { get; set; }
 }
