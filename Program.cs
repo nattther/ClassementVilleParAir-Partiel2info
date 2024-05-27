@@ -2,6 +2,8 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.Json;
+using System.Collections.Generic;
+using System.Linq;
 
 class Program
 {
@@ -12,7 +14,7 @@ class Program
 
         if (!string.IsNullOrEmpty(codePays))
         {
-            await PlusGrandVille(codePays);
+            await PlusGrandVille(codePays.ToUpper());
         }
         else
         {
@@ -27,16 +29,39 @@ class Program
 
         using HttpClient client = new HttpClient();
         HttpResponseMessage response = await client.GetAsync(url);
-        response.EnsureSuccessStatusCode();
-
         string responseBody = await response.Content.ReadAsStringAsync();
         GeoNamesResponse villes = JsonSerializer.Deserialize<GeoNamesResponse>(responseBody);
 
         Console.WriteLine($"Les plus grandes villes en {codePays} :");
+        List<CityAQI> cityAQIs = new List<CityAQI>();
+
         foreach (var ville in villes.geonames)
         {
-            Console.WriteLine($" {ville.name} ");
+            int aqi = await GetAirQualityIndex(ville.name, codePays);
+            cityAQIs.Add(new CityAQI { Name = ville.name, AQI = aqi });
         }
+
+        var sortedCityAQIs = cityAQIs.OrderBy(c => c.AQI).ToList();
+
+        Console.WriteLine("Villes classées par qualité de l'air (AQI) :");
+        foreach (var cityAQI in sortedCityAQIs)
+        {
+            Console.WriteLine($"{cityAQI.Name}: AQI = {cityAQI.AQI}");
+        }
+    }
+
+    private static async Task<int> GetAirQualityIndex(string cityName, string countryCode)
+    {
+        string apiKey = "iEK1eIhnyVkt9WRSOypjGw==qaCqybEnNauXykwC"; // Remplacez par votre clé API API Ninjas
+        string url = $"https://api.api-ninjas.com/v1/airquality?city={Uri.EscapeDataString(cityName)}&country={countryCode}";
+
+        using HttpClient client = new HttpClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+        HttpResponseMessage response = await client.GetAsync(url);
+        string responseBody = await response.Content.ReadAsStringAsync();
+        AirQualityResponse airQualityResponse = JsonSerializer.Deserialize<AirQualityResponse>(responseBody);
+
+        return airQualityResponse.overall_aqi;
     }
 }
 
@@ -49,4 +74,27 @@ public class GeoName
 {
     public string name { get; set; }
     public int population { get; set; }
+}
+
+public class AirQualityResponse
+{
+    public AQIInfo CO { get; set; }
+    public AQIInfo NO2 { get; set; }
+    public AQIInfo O3 { get; set; }
+    public AQIInfo SO2 { get; set; }
+    public AQIInfo PM25 { get; set; }
+    public AQIInfo PM10 { get; set; }
+    public int overall_aqi { get; set; }
+}
+
+public class AQIInfo
+{
+    public double concentration { get; set; }
+    public int aqi { get; set; }
+}
+
+public class CityAQI
+{
+    public string Name { get; set; }
+    public int AQI { get; set; }
 }
